@@ -59,12 +59,11 @@ export class Workspace extends Observable {
     this.changed();
   }
 
-  /** File > New Canvas: a fresh tab showing the new-canvas choices. */
+  /** File > New Canvas: a fresh tab showing the new-canvas choices (an empty project shows them). */
   newCanvas(): void {
     if (!this.canSwitch) return;
     this.current.commitTransform();
-    const tab = this.addTab(true);
-    tab.showsNewDocument = true;
+    this.addTab(false);
   }
 
   /** Opens projects (asking which without `paths`); a project already open is switched to. */
@@ -110,7 +109,13 @@ export class Workspace extends Observable {
       this.unsubscribers.get(tab)?.();
       return false;
     }
-    if (this.tabs.length === 1 && !this.current.document && !this.current.showsNewDocument) this.tabs = [];
+    if (this.tabs.length === 1 && !this.current.document) {
+      // The one empty tab gives way to the project.
+      const empty = this.tabs[0];
+      this.unsubscribers.get(empty)?.();
+      this.unsubscribers.delete(empty);
+      this.tabs = [];
+    }
     this.tabs = [...this.tabs, tab];
     this.selectedKey = tab.key;
     this.changed();
@@ -171,7 +176,6 @@ export class Workspace extends Observable {
       if (!tab) continue;
       this.selectedKey = tab.key;
       this.changed();
-      tab.showsNewDocument = false;
       await tab.importImages([file], point);
     }
   }

@@ -1,7 +1,7 @@
 // Compositor for Windows: the Electron main process. It owns the window, serves the editor from the app://
 // scheme (cross-origin isolated, so the background-removal model can use threads), and does what a page may
 // not: native file dialogs, reading and writing files, the system clipboard, and installing updates.
-import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, Menu, net, protocol, shell, screen } from 'electron';
+import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, Menu, net, protocol, shell, screen, systemPreferences } from 'electron';
 import type { OpenDialogOptions, SaveDialogOptions } from 'electron';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import fs from 'node:fs/promises';
@@ -311,6 +311,17 @@ function registerIpc() {
   });
   ipcMain.on('window:set-title', (event, title: string) => {
     BrowserWindow.fromWebContents(event.sender)?.setTitle(title);
+  });
+  ipcMain.on('window:toggle-full-screen', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    window?.setFullScreen(!window.isFullScreen());
+  });
+  // Windows' accent colour for selections and highlights, as the Mac app uses the system's.
+  ipcMain.handle('app:accent-color', () => {
+    try {
+      const value = systemPreferences.getAccentColor?.();
+      return value ? `#${value.slice(0, 6)}` : null;
+    } catch { return null; }
   });
   ipcMain.handle('app:check-updates', async () => checkForUpdates());
 }

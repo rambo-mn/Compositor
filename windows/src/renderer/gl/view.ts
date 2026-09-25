@@ -12,6 +12,8 @@ export const PIXEL_GRID_ZOOM = 8;
 
 export interface PresentOptions {
   pixelGrid: boolean;
+  /** The document area to show (document pixels); the whole canvas unless the crop frame reaches past it. */
+  bounds?: { x: number; y: number; width: number; height: number };
 }
 
 export class CanvasRenderer {
@@ -58,8 +60,12 @@ export class CanvasRenderer {
       return;
     }
     const size = { width: scene.width, height: scene.height };
+    const bounds = options.bounds ?? { x: 0, y: 0, width: size.width, height: size.height };
     const rect = viewport.documentRect(size);
-    const canvasRect = { x: rect.x * dpr, y: rect.y * dpr, width: size.width * viewport.zoom, height: size.height * viewport.zoom };
+    const zoom = viewport.zoom;
+    // Device pixels: where document pixel (0, 0) lands, and the area shown (the checkerboard and layers).
+    const origin = { x: rect.x * dpr, y: rect.y * dpr };
+    const canvasRect = { x: origin.x + bounds.x * zoom, y: origin.y + bounds.y * zoom, width: bounds.width * zoom, height: bounds.height * zoom };
     const visible = {
       x: Math.max(0, Math.floor(canvasRect.x)), y: Math.max(0, Math.floor(canvasRect.y)),
       x1: Math.min(deviceWidth, Math.ceil(canvasRect.x + canvasRect.width)), y1: Math.min(deviceHeight, Math.ceil(canvasRect.y + canvasRect.height)),
@@ -67,28 +73,27 @@ export class CanvasRenderer {
     let docRect: { x: number; y: number; width: number; height: number } | null = null;
     let nearest = false;
     if (visible.x1 > visible.x && visible.y1 > visible.y) {
-      if (viewport.zoom >= CRISP_ZOOM) {
+      if (zoom >= CRISP_ZOOM) {
         // The document pixels on screen, composited 1:1.
-        const x0 = Math.max(0, Math.floor((visible.x - canvasRect.x) / viewport.zoom));
-        const y0 = Math.max(0, Math.floor((visible.y - canvasRect.y) / viewport.zoom));
-        const x1 = Math.min(size.width, Math.ceil((visible.x1 - canvasRect.x) / viewport.zoom));
-        const y1 = Math.min(size.height, Math.ceil((visible.y1 - canvasRect.y) / viewport.zoom));
+        const x0 = Math.max(bounds.x, Math.floor((visible.x - origin.x) / zoom));
+        const y0 = Math.max(bounds.y, Math.floor((visible.y - origin.y) / zoom));
+        const x1 = Math.min(bounds.x + bounds.width, Math.ceil((visible.x1 - origin.x) / zoom));
+        const y1 = Math.min(bounds.y + bounds.height, Math.ceil((visible.y1 - origin.y) / zoom));
         const target = this.targetOfSize(x1 - x0, y1 - y0);
         this.compositor.render(scene, target, { a: 1, b: 0, c: 0, d: 1, tx: -x0, ty: -y0 });
-        docRect = { x: canvasRect.x + x0 * viewport.zoom, y: canvasRect.y + y0 * viewport.zoom, width: (x1 - x0) * viewport.zoom, height: (y1 - y0) * viewport.zoom };
+        docRect = { x: origin.x + x0 * zoom, y: origin.y + y0 * zoom, width: (x1 - x0) * zoom, height: (y1 - y0) * zoom };
         nearest = true;
       } else {
         const width = visible.x1 - visible.x, height = visible.y1 - visible.y;
         const target = this.targetOfSize(width, height);
-        const z = viewport.zoom;
-        this.compositor.render(scene, target, { a: z, b: 0, c: 0, d: z, tx: canvasRect.x - visible.x, ty: canvasRect.y - visible.y });
+        this.compositor.render(scene, target, { a: zoom, b: 0, c: 0, d: zoom, tx: origin.x - visible.x, ty: origin.y - visible.y });
         docRect = { x: visible.x, y: visible.y, width, height };
       }
     }
     ctx.use(program, null, deviceWidth, deviceHeight, true);
     gl.disable(gl.BLEND);
     this.presentUniforms(program, deviceWidth, deviceHeight, canvasRect, docRect, this.docTarget, nearest, dpr,
-      options.pixelGrid && viewport.zoom >= PIXEL_GRID_ZOOM, viewport.zoom);
+      options.pixelGrid && zoom >= PIXEL_GRID_ZOOM, zoom);
     ctx.drawRect(0, 0, deviceWidth, deviceHeight);
   }
 

@@ -285,6 +285,9 @@ export class GLImage {
       gl.uniform4i(ctx.uniform(program, 'u_clamp'), APRON, APRON, APRON + source.width - 1, APRON + source.height - 1);
     } else {
       const f = fill / 255;
+      // Nothing is sampled, but the sampler must not name a texture being drawn into (a feedback loop WebGL refuses).
+      ctx.bindTexture(0, null);
+      gl.uniform1i(ctx.uniform(program, 'u_src'), 0);
       gl.uniform1i(ctx.uniform(program, 'u_useFill'), 1);
       gl.uniform4f(ctx.uniform(program, 'u_fill'), f, sourceImage.isMask ? 0 : f, sourceImage.isMask ? 0 : f, sourceImage.isMask ? 1 : f);
     }

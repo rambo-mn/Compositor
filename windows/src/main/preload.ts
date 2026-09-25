@@ -23,6 +23,8 @@ const api = {
   saveModel: (name: string, data: Uint8Array) => ipcRenderer.invoke('app:save-model', name, data) as Promise<void>,
   pathForFile: (file: File) => { try { return webUtils.getPathForFile(file) || null; } catch { return null; } },
   setTitle: (title: string) => ipcRenderer.send('window:set-title', title),
+  toggleFullScreen: () => ipcRenderer.send('window:toggle-full-screen'),
+  accentColor: () => ipcRenderer.invoke('app:accent-color') as Promise<string | null>,
   rendererReady: () => ipcRenderer.send('app:renderer-ready'),
   confirmClose: () => ipcRenderer.send('app:confirm-close'),
   onOpenFiles: (listener: (paths: string[]) => void) => {
