@@ -25,3 +25,11 @@ Version 5 adds optional `maskSourceID`: the UUID of a non-group layer supplying 
 UI terminology: these alpha links are clipping masks. Option-click assigns the lower sibling’s base or releases the connection. Multiple clipped layers share one base, show indented above it, and release when moved outside the contiguous stack. The underlying `maskSourceID` representation is unchanged.
 
 Version 6 allows `maskFile` and `maskEnabled` on group records. A folder has no image, so its mask covers the folder's own transform rectangle (the canvas size when the folder was created); Image Size resamples it through that transform, and Canvas Size and Crop preserve its pixels, exactly as for layer masks. Groups are pass-through, so an enabled folder mask multiplies the coverage of every descendant layer, together with that layer's own mask and any enclosing folders' masks; clipping-mask coverage is unaffected. Files declaring versions 1–5 cannot give a group a mask, and older app builds reject v6.
+
+## Windows
+
+Compositor for Windows (`windows/`) reads and writes the same manifest and images. Because Windows has no document
+packages, it saves a project as a single `.comp` file by default: a ZIP archive whose entries are `manifest.json`
+and `images/…`, exactly as in the package folder (PNGs are stored uncompressed, since they are compressed already).
+It opens both that form and the Mac's folder packages, and **File → Save As Mac Project Folder…** writes the folder
+form, which is the one the Mac app opens. Both apps apply the same validation and limits.

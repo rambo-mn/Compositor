@@ -68,7 +68,8 @@ function TransformInspector({ session }: { session: EditorSession }) {
         title="Select layers by clicking the canvas. When off, hold Ctrl to select a layer." />
       <Toggle label="Show Controls" checked={state.controls} onChange={(v) => { session.showsTransformControls = v; }}
         title="Show the transform box and handles (Ctrl+H). When hidden, drag anywhere to move the layer." />
-      <div className="bar-scroll">
+      {/* Scrolls sideways (with the mouse wheel too) when the window is too narrow for every field. */}
+      <div className="bar-scroll" onWheel={(event) => { if (event.deltaY) event.currentTarget.scrollLeft += event.deltaY; }}>
         <Field label="X"><NumberField value={value.origin.x} decimals={2} live disabled={disabled} width={62} testId="transformX"
           onChange={(v) => change((t) => { t.origin.x = v; return t; })} /></Field>
         <Field label="Y"><NumberField value={value.origin.y} decimals={2} live disabled={disabled} width={62} testId="transformY"

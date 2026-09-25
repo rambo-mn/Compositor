@@ -59,6 +59,13 @@ Because it’s open source, you can download the Xcode project and add, remove, 
 - macOS 26
 - Xcode 26 (to build from source)
 
+## Windows
+
+Compositor also runs on Windows 10 and 11: the [`windows/`](windows/README.md) folder is a port of the same editor
+(Electron, TypeScript and WebGL 2) with every tool, panel and menu of the Mac app, Ctrl and Alt in place of ⌘ and ⌥,
+and projects that open on both. See [windows/README.md](windows/README.md) to install it, build it and learn every
+feature.
+
 ## Building
 
 Open `Compositor.xcodeproj` and run the **Compositor** scheme.

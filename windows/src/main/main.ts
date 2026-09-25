@@ -363,6 +363,8 @@ if (!isTest && !app.requestSingleInstanceLock()) {
       mainWindow.focus();
     }
   });
+  // Groups the window with its taskbar shortcut and file associations (the installer registers this id).
+  if (process.platform === 'win32') app.setAppUserModelId('com.compositor.windows');
   app.whenReady().then(() => {
     Menu.setApplicationMenu(null);
     registerAppProtocol();
