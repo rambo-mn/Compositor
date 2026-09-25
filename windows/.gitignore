@@ -1,0 +1,12 @@
+# Dependencies and build output
+node_modules/
+dist/
+release/
+test-results/
+playwright-report/
+
+# The background-removal model is downloaded at build time (npm run fetch-model)
+resources/models/
+
+# The repository's top-level .gitignore excludes build/; here it holds the icon sources electron-builder uses
+!build/

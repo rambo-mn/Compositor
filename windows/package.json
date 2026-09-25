@@ -1,0 +1,47 @@
+{
+  "name": "compositor",
+  "productName": "Compositor",
+  "version": "1.0.4",
+  "description": "Compositor for Windows: a free, full-featured image editor for compositing and retouching.",
+  "main": "dist/main/main.js",
+  "license": "MIT",
+  "private": true,
+  "author": {
+    "name": "Compositor contributors"
+  },
+  "homepage": "https://github.com/rambo-mn/Compositor",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "start": "node scripts/build.mjs && electron .",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run",
+    "e2e": "node scripts/build.mjs && playwright test",
+    "fetch-model": "node scripts/fetch-model.mjs",
+    "icons": "node scripts/make-icons.mjs",
+    "dist": "node scripts/build.mjs && node scripts/fetch-model.mjs && electron-builder --win --x64 --publish never",
+    "dist:dir": "node scripts/build.mjs && electron-builder --win --x64 --dir --publish never"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "clipper-lib": "^6.4.2",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
+    "electron-updater": "^6.8.9",
+    "esbuild": "^0.28.2",
+    "fast-png": "^8.0.0",
+    "fflate": "^0.8.3",
+    "heic-decode": "^2.1.0",
+    "immer": "^11.1.18",
+    "lucide-react": "^1.48.0",
+    "onnxruntime-web": "^1.30.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "typescript": "^5.9.3",
+    "utif2": "^4.1.0",
+    "vitest": "^5.0.2"
+  }
+}
