@@ -318,9 +318,9 @@ All adjustments preview live, apply to the selection only when there is one, and
 - **Remove Background…** — finds the main subject and hides the background with a layer mask, so nothing is deleted
   and you can paint the background back. **Basic** uses the model’s mask as it is; **Advanced** adds **Refine** (pull
   the mask onto the image’s own edges — hair and fur), **Contrast** (clear semi-transparent haze) and **Shift Edge**
-  (shrink or grow the mask to drop a coloured rim). It runs on the graphics card where WebGPU is available (a second or two), otherwise
-  on the processor (from several seconds to about a minute, depending on the computer) Copies of the app that weren’t installed with the model
-  download it once (about 170 MB); the panel shows the progress.
+  (shrink or grow the mask to drop a coloured rim). It runs on the graphics card where WebGPU is available (a second
+  or two), otherwise on the processor (from several seconds to about a minute, depending on the computer). Copies of
+  the app that weren’t installed with the model download it once (about 170 MB); the panel shows the progress.
 
 ## Keyboard shortcuts
 
