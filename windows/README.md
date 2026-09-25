@@ -81,7 +81,8 @@ You can also open things straight into it:
 - Drag **images** (JPEG, PNG, HEIC, TIFF, WebP, BMP, GIF) or **projects** onto the window. Images dropped on the
   canvas land where you drop them; images dropped on a tab go into that project; images dropped on the **+** button or
   the **New** slot that appears in the tab strip open in new tabs.
-- Right-click an image → **Open with** → **Choose another app** → Compositor.
+- Right-click an image → **Open with** → **Choose another app** → **Choose an app on your PC**, and pick
+  `Compositor.exe` (the installer puts it in `%LOCALAPPDATA%\Programs\Compositor`).
 - Paste an image copied in another app with **Ctrl+V**.
 
 The first launch fills the screen; after that the window opens where and how you left it. Only one copy of the app
