@@ -779,7 +779,7 @@ export class BrushStroke {
       }
       return blank.withTiles(changes);
     }
-    return Raster.fromData(crop.width, crop.height, this.channels, this.readRegion(crop), this.isMask ? -1 : 0);
+    return Raster.fromData(crop.width, crop.height, this.channels, this.readRegion(crop), 0);
   }
 }
 

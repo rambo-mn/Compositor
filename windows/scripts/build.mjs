@@ -37,6 +37,11 @@ const builds = [
   { ...shared, entryPoints: { worker: path.join(root, 'src/renderer/workers/worker.ts') }, outdir: path.join(dist, 'renderer'),
     platform: 'browser', format: 'esm', target: 'chrome140' },
 ];
+// GPU checks the end-to-end tests load into the page (not shipped in production builds).
+if (!production) {
+  builds.push({ ...shared, entryPoints: { gltest: path.join(root, 'src/renderer/test/glTests.ts') }, outdir: path.join(dist, 'renderer'),
+    platform: 'browser', format: 'esm', target: 'chrome140' });
+}
 
 async function copyStatic() {
   await cp(path.join(root, 'src/renderer/index.html'), path.join(dist, 'renderer/index.html'));

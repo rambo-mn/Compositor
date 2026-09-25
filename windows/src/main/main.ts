@@ -1,7 +1,7 @@
 // Compositor for Windows: the Electron main process. It owns the window, serves the editor from the app://
 // scheme (cross-origin isolated, so the background-removal model can use threads), and does what a page may
 // not: native file dialogs, reading and writing files, the system clipboard, and installing updates.
-import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, net, protocol, shell, screen } from 'electron';
+import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, Menu, net, protocol, shell, screen } from 'electron';
 import type { OpenDialogOptions, SaveDialogOptions } from 'electron';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import fs from 'node:fs/promises';
@@ -271,17 +271,23 @@ function registerIpc() {
     await writePackage(folder, files);
   });
   ipcMain.handle('fs:temp-dir', () => app.getPath('temp'));
-  ipcMain.handle('clipboard:read-image', () => {
-    const image = clipboard.readImage();
-    if (image.isEmpty()) return null;
-    return new Uint8Array(image.toPNG());
+  // Electron's clipboard is asynchronous and typed by MIME type (as navigator.clipboard is).
+  ipcMain.handle('clipboard:read-image', async () => {
+    for (const item of await clipboard.read()) {
+      const type = item.types.find((t) => t === 'image/png') ?? item.types.find((t) => t.startsWith('image/'));
+      if (!type) continue;
+      const blob = await item.getType(type);
+      if (!(blob instanceof Blob)) continue;
+      return new Uint8Array(await blob.arrayBuffer());
+    }
+    return null;
   });
-  ipcMain.handle('clipboard:has-image', () => {
-    const formats = clipboard.availableFormats();
-    return formats.some((format) => format.startsWith('image/')) || !clipboard.readImage().isEmpty();
+  ipcMain.handle('clipboard:has-image', async () => {
+    for (const item of await clipboard.read()) if (item.types.some((t) => t.startsWith('image/'))) return true;
+    return false;
   });
-  ipcMain.handle('clipboard:write-image', (_event, png: Uint8Array) => {
-    clipboard.writeImage(nativeImage.createFromBuffer(Buffer.from(png)));
+  ipcMain.handle('clipboard:write-image', async (_event, png: Uint8Array) => {
+    await clipboard.write([new ClipboardItem({ 'image/png': new Blob([Buffer.from(png)], { type: 'image/png' }) })]);
   });
   ipcMain.handle('app:version', () => app.getVersion());
   ipcMain.handle('app:open-external', (_event, url: string) => {

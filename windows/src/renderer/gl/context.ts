@@ -7,7 +7,7 @@ export interface Target {
   framebuffer: WebGLFramebuffer;
   width: number;
   height: number;
-  format: 'rgba8';
+  format: 'rgba8' | 'r8';
 }
 
 const VERTEX = `#version 300 es
