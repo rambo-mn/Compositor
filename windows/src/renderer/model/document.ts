@@ -12,12 +12,13 @@ export type LayerBlendMode = 'Normal' | 'Multiply' | 'Screen' | 'Overlay' | 'Dar
 export const BLEND_MODES: LayerBlendMode[] = ['Normal', 'Multiply', 'Screen', 'Overlay', 'Darken', 'Lighten',
   'Difference', 'Color Dodge', 'Color Burn', 'Hue', 'Saturation', 'Color', 'Luminosity'];
 
-/** Pixels plus the Layers panel's small preview. */
+/** A layer's (or mask's) pixels. The Layers panel's thumbnails are rendered from them on demand. */
 export interface ImageAsset {
   image: Raster;
-  thumbnail: Raster;
   name: string;
 }
+
+export const asset = (image: Raster, name: string): ImageAsset => ({ image, name });
 
 /** Normalized layer-local coverage: white reveals, black hides. */
 export interface LayerMask {

@@ -125,6 +125,25 @@ export class Raster {
     return out;
   }
 
+  /** Pixels in `x, y, w, h` with coordinates outside the image clamped to its edge (edge pixels repeat). */
+  readRegionClamped(x: number, y: number, w: number, h: number): Uint8Array {
+    const c = this.channels;
+    const x0 = Math.min(this.width - 1, Math.max(0, x)), x1 = Math.min(this.width, Math.max(1, x + w));
+    const y0 = Math.min(this.height - 1, Math.max(0, y)), y1 = Math.min(this.height, Math.max(1, y + h));
+    const inner = this.readRegion(x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
+    const iw = Math.max(1, x1 - x0), ih = Math.max(1, y1 - y0);
+    const out = new Uint8Array(w * h * c);
+    for (let row = 0; row < h; row++) {
+      const sy = Math.min(ih - 1, Math.max(0, y + row - y0));
+      for (let col = 0; col < w; col++) {
+        const sx = Math.min(iw - 1, Math.max(0, x + col - x0));
+        const s = (sy * iw + sx) * c, d = (row * w + col) * c;
+        for (let k = 0; k < c; k++) out[d + k] = inner[s + k];
+      }
+    }
+    return out;
+  }
+
   /** One pixel's channels; zeros outside the image. */
   pixel(x: number, y: number): number[] {
     if (x < 0 || y < 0 || x >= this.width || y >= this.height) return new Array(this.channels).fill(0);

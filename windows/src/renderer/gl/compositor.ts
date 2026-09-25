@@ -8,7 +8,8 @@ import { APRON, GLImage, GLImageCache, GLTile, MAX_LEVEL } from './images';
 import {
   ADJUST_FRAGMENT, COMPOSITE_FRAGMENT, LAYER_FRAGMENT, MASK_FRAGMENT, MULTIPLY_FRAGMENT, OPAQUE_FRAGMENT, RESTORE_FRAGMENT,
 } from './shaders';
-import { Affine, applyPoint, concat, invert } from '../model/geometry';
+import { Affine, invert } from '../model/geometry';
+import { Matrix3, compose3, fromAffine, invert3, project } from '../model/projective';
 import type { LayerSampling } from '../model/transform';
 import type { LayerBlendMode } from '../model/document';
 import { BLEND_MODES } from '../model/document';
@@ -28,6 +29,8 @@ export interface SceneImage {
   height: number;
   /** Maps the grid (pixels, y down) onto the document. */
   gridToDocument: Affine;
+  /** A perspective mapping of the grid onto the document, used instead of `gridToDocument` (a distortion). */
+  projective?: Matrix3 | null;
   sampling: LayerSampling;
 }
 
@@ -154,6 +157,18 @@ export class Compositor {
       this.frameTargets = [];
       this.scene = null;
     }
+  }
+
+  /** Renders a mask's coverage into `target` (every channel holds it). */
+  renderMask(mask: SceneMask, target: Target, docToOut: Affine): void {
+    this.images.frame += 1;
+    this.width = target.width;
+    this.height = target.height;
+    this.docToOut = docToOut;
+    this.outToDoc = invert(docToOut);
+    const outside = mask.outside === 'clamp' ? 1 : mask.outside;
+    this.ctx.clear(target, outside, outside, outside, 1);
+    this.drawImage(mask.image, target, { mask: true, outside: mask.outside });
   }
 
   /** Clipping stacks share the base's alpha: a base (no source, not an adjustment) and the layers directly above
@@ -325,10 +340,13 @@ export class Compositor {
     const base = this.glImage(image);
     if (!base) return;
     const ctx = this.ctx, gl = ctx.gl;
-    const gridToOut = concat(image.gridToDocument, this.docToOut);
-    const outToGrid = invert(gridToOut);
-    // Output pixels per grid pixel, along the grid's x axis (as LayerRenderer measures it).
-    const factor = Math.hypot(gridToOut.a, gridToOut.b);
+    const gridToOut = compose3(image.projective ?? fromAffine(image.gridToDocument), fromAffine(this.docToOut));
+    const outToGrid = invert3(gridToOut);
+    if (!outToGrid) return;
+    const map = (x: number, y: number) => project(gridToOut, { x, y });
+    // Output pixels per grid pixel, along the grid's x axis at its middle (as LayerRenderer measures it).
+    const middle = map(base.width / 2, base.height / 2), step = map(base.width / 2 + 1, base.height / 2);
+    const factor = Math.hypot(step.x - middle.x, step.y - middle.y);
     const level = image.sampling === 'Nearest' ? 0 : levelFor(factor);
     const source = base.levelImage(level);
     const levelScale = 1 << source.level;
@@ -338,8 +356,13 @@ export class Compositor {
     const isMask = !!options.mask;
     const blend = options.blend ?? 0;
     const useBackdrop = !isMask && blend > 0;
-    // Grid pixels per output pixel, for the margins around each tile's quad.
-    const perOut = Math.max(Math.hypot(outToGrid.a, outToGrid.b), Math.hypot(outToGrid.c, outToGrid.d));
+    // Grid pixels per output pixel (the largest across the image's corners), for the margins around each quad.
+    let perOut = 0;
+    for (const [x, y] of [[0, 0], [extentX, 0], [extentX, extentY], [0, extentY]]) {
+      const p = map(x, y), q = project(outToGrid, { x: p.x + 1, y: p.y }), r = project(outToGrid, { x: p.x, y: p.y + 1 });
+      perOut = Math.max(perOut, Math.hypot(q.x - x, q.y - y), Math.hypot(r.x - x, r.y - y));
+    }
+    if (!Number.isFinite(perOut)) return;
     const clampOutside = isMask && options.outside === 'clamp';
     // Seams are cut exactly by the shader; outer edges need room for their antialiased fringe.
     const near = 2 * perOut + 2;
@@ -347,7 +370,7 @@ export class Compositor {
     // The whole quad's bounds in the target, for the backdrop copy.
     if (useBackdrop) {
       const corners = [[-near, -near], [extentX + near, -near], [extentX + near, extentY + near], [-near, extentY + near]]
-        .map(([x, y]) => applyPoint(gridToOut, { x, y }));
+        .map(([x, y]) => map(x, y));
       const x0 = Math.floor(Math.min(...corners.map((p) => p.x))) - 1, y0 = Math.floor(Math.min(...corners.map((p) => p.y))) - 1;
       const x1 = Math.ceil(Math.max(...corners.map((p) => p.x))) + 1, y1 = Math.ceil(Math.max(...corners.map((p) => p.y))) + 1;
       if (x1 <= 0 || y1 <= 0 || x0 >= target.width || y0 >= target.height) return;
@@ -358,7 +381,7 @@ export class Compositor {
     ctx.use(program, target, target.width, target.height);
     const u = (name: string) => ctx.uniform(program, name);
     const m = outToGrid;
-    gl.uniformMatrix3fv(u('u_outToGrid'), false, new Float32Array([m.a, m.b, 0, m.c, m.d, 0, m.tx, m.ty, 1]));
+    gl.uniformMatrix3fv(u('u_outToGrid'), false, new Float32Array([m[0], m[3], m[6], m[1], m[4], m[7], m[2], m[5], m[8]]));
     gl.uniform1f(u('u_levelScale'), levelScale);
     gl.uniform2f(u('u_imageSize'), source.width, source.height);
     gl.uniform2f(u('u_extent'), extentX, extentY);
@@ -409,7 +432,7 @@ export class Compositor {
       const x0 = tile.x * levelScale - near, y0 = tile.y * levelScale - near;
       const x1 = (tile.x + tile.width) * levelScale + near, y1 = (tile.y + tile.height) * levelScale + near;
       const quad = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(([x, y]) => {
-        const p = applyPoint(gridToOut, { x, y });
+        const p = map(x, y);
         return [p.x, p.y] as [number, number];
       });
       ctx.drawQuad(quad);

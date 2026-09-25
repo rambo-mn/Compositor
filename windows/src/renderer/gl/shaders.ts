@@ -11,7 +11,7 @@ precision highp sampler3D;
 
 /** Tiled image sampling: which tile a fragment belongs to, antialiased outer edges, and three filters. */
 const SAMPLING = `
-uniform mat3 u_outToGrid;     // output pixel → level-0 grid pixel
+uniform mat3 u_outToGrid;     // output pixel → level-0 grid pixel (projective: divide by z)
 uniform float u_levelScale;   // grid pixels per level pixel
 uniform vec2 u_imageSize;     // level pixels
 uniform vec2 u_extent;        // grid pixels the image covers (edges antialias here)
@@ -25,22 +25,23 @@ uniform bool u_antialias;
 uniform bool u_useFill;
 uniform vec4 u_fill;
 
-vec3 gridPoint() { return u_outToGrid * vec3(gl_FragCoord.xy, 1.0); }
+vec2 gridPoint() { vec3 g = u_outToGrid * vec3(gl_FragCoord.xy, 1.0); return g.xy / g.z; }
 
 bool outsideTile(vec2 p) {
   return (u_seams.x > 0.5 && p.x < u_tile.x) || (u_seams.y > 0.5 && p.y < u_tile.y)
       || (u_seams.z > 0.5 && p.x >= u_tile.x + u_tile.z) || (u_seams.w > 0.5 && p.y >= u_tile.y + u_tile.w);
 }
 
-/** How much of the output pixel the image's outer edges leave covered. */
-float edgeCoverage(vec2 g) {
+/** How much of the output pixel the image's outer edges leave covered. dx and dy are the grid point's change
+ *  per output pixel (taken before any discard, where derivatives are defined). */
+float edgeCoverage(vec2 g, vec2 dx, vec2 dy) {
   if (!u_antialias) {
     bool inside = (u_seams.x > 0.5 || g.x >= 0.0) && (u_seams.y > 0.5 || g.y >= 0.0)
       && (u_seams.z > 0.5 || g.x < u_extent.x) && (u_seams.w > 0.5 || g.y < u_extent.y);
     return inside ? 1.0 : 0.0;
   }
-  float gx = length(vec2(u_outToGrid[0][0], u_outToGrid[1][0]));
-  float gy = length(vec2(u_outToGrid[0][1], u_outToGrid[1][1]));
+  float gx = max(length(vec2(dx.x, dy.x)), 1e-6);
+  float gy = max(length(vec2(dx.y, dy.y)), 1e-6);
   float cx = 1.0, cy = 1.0;
   if (u_seams.x < 0.5) cx = min(cx, g.x / gx + 0.5);
   if (u_seams.z < 0.5) cx = min(cx, (u_extent.x - g.x) / gx + 0.5);
@@ -161,12 +162,13 @@ float clipCoverage(vec2 g) {
 export const LAYER_FRAGMENT = HEADER + SAMPLING + BLEND + COVERAGE_INPUTS + `
 out vec4 o;
 void main() {
-  vec3 g = gridPoint();
-  vec2 p = g.xy / u_levelScale;
+  vec2 g = gridPoint();
+  vec2 gdx = dFdx(g), gdy = dFdy(g);
+  vec2 p = g / u_levelScale;
   if (outsideTile(p)) discard;
-  float coverage = edgeCoverage(g.xy);
+  float coverage = edgeCoverage(g, gdx, gdy);
   if (coverage <= 0.0) discard;
-  coverage *= u_opacity * clipCoverage(g.xy);
+  coverage *= u_opacity * clipCoverage(g);
   vec4 src = sampleImage(p) * coverage;
   if (u_blend < 0) { o = src; return; }
   o = blendOver(src, texelFetch(u_backdrop, ivec2(gl_FragCoord.xy), 0), u_blend);
@@ -179,11 +181,12 @@ uniform bool u_clampOutside;
 uniform float u_outside;
 out vec4 o;
 void main() {
-  vec3 g = gridPoint();
-  vec2 p = g.xy / u_levelScale;
+  vec2 g = gridPoint();
+  vec2 gdx = dFdx(g), gdy = dFdy(g);
+  vec2 p = g / u_levelScale;
   if (outsideTile(p)) discard;
   float value = sampleImage(p).r;
-  if (!u_clampOutside) value = mix(u_outside, value, edgeCoverage(g.xy));
+  if (!u_clampOutside) value = mix(u_outside, value, edgeCoverage(g, gdx, gdy));
   o = vec4(value);
 }`;
 
