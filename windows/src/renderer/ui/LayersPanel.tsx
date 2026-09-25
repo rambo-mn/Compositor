@@ -58,7 +58,7 @@ export function LayersPanel({ session, width }: { session: EditorSession; width:
         <Button kind="icon" title="Group selected layers (Ctrl+G)" label="New folder" disabled={!s.canEdit} onClick={() => session.groupSelectedLayers()}>
           <FolderPlus size={16} />
         </Button>
-        <Button kind="icon" title={s.hasSelection ? 'Add layer mask (the selection stays visible)' : 'Add layer mask'} label="Add layer mask"
+        <Button kind="icon" title={s.hasSelection ? 'Add layer mask (the selection becomes black)' : 'Add layer mask'} label="Add layer mask"
           disabled={!s.canEditMask || s.activeHasMask} onClick={() => session.addMask()} testId="addLayerMask">
           <MaskIcon />
         </Button>

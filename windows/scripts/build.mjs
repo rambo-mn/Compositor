@@ -30,8 +30,10 @@ const builds = [
   { ...shared, entryPoints: [path.join(root, 'src/main/preload.ts')], outfile: path.join(dist, 'main/preload.js'),
     platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] },
   // The editor itself.
+  // ONNX Runtime (Remove Background) loads on first use, from its own chunk, with its WebAssembly beside the page.
   { ...shared, entryPoints: { app: path.join(root, 'src/renderer/index.tsx') }, outdir: path.join(dist, 'renderer'),
-    platform: 'browser', format: 'esm', target: 'chrome140', jsx: 'automatic',
+    platform: 'browser', format: 'esm', target: 'chrome140', jsx: 'automatic', splitting: true,
+    conditions: ['onnxruntime-web-use-extern-wasm'], chunkNames: 'chunks/[name]-[hash]',
     loader: { '.wasm': 'file', '.svg': 'text' }, assetNames: 'assets/[name]-[hash]' },
   // Heavy pixel work runs off the main thread.
   { ...shared, entryPoints: { worker: path.join(root, 'src/renderer/workers/worker.ts') }, outdir: path.join(dist, 'renderer'),
@@ -43,14 +45,17 @@ if (!production) {
     platform: 'browser', format: 'esm', target: 'chrome140' });
 }
 
+/** The WebGPU build's runtime (WebGPU and processor), as onnxruntime-web/webgpu loads it. */
+const ORT_FILES = ['ort-wasm-simd-threaded.asyncify.mjs', 'ort-wasm-simd-threaded.asyncify.wasm',
+  'ort-wasm-simd-threaded.jsep.mjs', 'ort-wasm-simd-threaded.jsep.wasm'];
+
 async function copyStatic() {
   await cp(path.join(root, 'src/renderer/index.html'), path.join(dist, 'renderer/index.html'));
   await cp(path.join(root, 'src/renderer/assets'), path.join(dist, 'renderer/assets'), { recursive: true });
   // ONNX Runtime loads its WebAssembly next to the page.
   const ort = path.join(root, 'node_modules/onnxruntime-web/dist');
   await mkdir(path.join(dist, 'renderer/ort'), { recursive: true });
-  for (const file of ['ort-wasm-simd-threaded.wasm', 'ort-wasm-simd-threaded.mjs',
-                      'ort-wasm-simd-threaded.jsep.wasm', 'ort-wasm-simd-threaded.jsep.mjs']) {
+  for (const file of ORT_FILES) {
     if (existsSync(path.join(ort, file))) await cp(path.join(ort, file), path.join(dist, 'renderer/ort', file));
   }
 }

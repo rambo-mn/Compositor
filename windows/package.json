@@ -7,7 +7,7 @@
   "license": "MIT",
   "private": true,
   "author": {
-    "name": "Compositor contributors"
+    "name": "Wonder Assembly LLC and contributors"
   },
   "homepage": "https://github.com/rambo-mn/Compositor",
   "scripts": {
@@ -17,10 +17,10 @@
     "typecheck": "tsc --noEmit -p .",
     "test": "vitest run",
     "e2e": "node scripts/build.mjs && playwright test",
+    "pack": "node scripts/build.mjs --production && electron-builder --win --x64 --dir --publish never",
     "fetch-model": "node scripts/fetch-model.mjs",
     "icons": "node scripts/make-icons.mjs",
-    "dist": "node scripts/build.mjs && node scripts/fetch-model.mjs && electron-builder --win --x64 --publish never",
-    "dist:dir": "node scripts/build.mjs && electron-builder --win --x64 --dir --publish never"
+    "dist": "node scripts/build.mjs --production && node scripts/fetch-model.mjs && electron-builder --win --x64 --publish never"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

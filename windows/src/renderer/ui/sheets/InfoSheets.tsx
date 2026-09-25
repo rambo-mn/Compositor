@@ -16,12 +16,14 @@ export function AlertSheet({ alert }: { alert: AlertRequest }) {
           {alert.message ? <p className="alert-message">{alert.message}</p> : null}
         </div>
       </div>
+      {/* Windows' order: the default first, Cancel last. */}
       <div className="sheet-buttons">
         <span className="spacer" />
-        {alert.buttons.map((title, index) => index === 0 ? null : (
+        <Button kind="primary" onClick={() => alert.resolve(0)} testId="alertButton0">{alert.buttons[0]}</Button>
+        {alert.buttons.map((title, index) => index === 0 || index === cancel ? null : (
           <Button key={title} onClick={() => alert.resolve(index)} testId={`alertButton${index}`}>{title}</Button>
         ))}
-        <Button kind="primary" onClick={() => alert.resolve(0)} testId="alertButton0">{alert.buttons[0]}</Button>
+        {cancel > 0 ? <Button onClick={() => alert.resolve(cancel)} testId={`alertButton${cancel}`}>{alert.buttons[cancel]}</Button> : null}
       </div>
     </Sheet>
   );

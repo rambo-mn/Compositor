@@ -11,6 +11,7 @@ import {
   gradientMapEnds, identityCurve, type AdjustmentColor, type CurvePoint,
 } from '../../model/adjustments';
 import { cssColor } from '../../model/color';
+import { modelState } from '../../ml/model';
 
 export function FilterPanel({ session }: { session: EditorSession }) {
   const s = useSelect(session, (x) => ({
@@ -118,6 +119,22 @@ export function FilterPanel({ session }: { session: EditorSession }) {
       </div>
     </FloatingPanel>
   );
+}
+
+/** The segmentation model's first download, its loading, and its run. */
+function ModelProgress() {
+  const m = useSelect(modelState, (x) => ({ phase: x.phase, received: x.received, total: x.total }));
+  if (m.phase === 'idle') return null;
+  if (m.phase === 'downloading') {
+    const fraction = m.total ? m.received / m.total : 0;
+    return (
+      <div className="column">
+        <span className="hint">Downloading the background-removal model (first use only)… {Math.round(fraction * 100)}% of {Math.round(m.total / 1048576)} MB</span>
+        <progress className="progress" value={fraction} max={1} />
+      </div>
+    );
+  }
+  return <span className="hint">{m.phase === 'loading' ? 'Loading the background-removal model…' : 'Finding the subject…'}</span>;
 }
 
 // MARK: Curves

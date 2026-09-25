@@ -1,0 +1,52 @@
+# Windows packaging: an installer (NSIS, per user, choice of folder) and a portable .exe that needs no install.
+# `npm run dist` builds both into release/.
+appId: com.compositor.windows
+productName: Compositor
+copyright: Copyright © 2026 Wonder Assembly LLC and contributors
+directories:
+  output: release
+  buildResources: build
+# Everything the app runs is bundled into dist/ by scripts/build.mjs, so no node_modules ship.
+files:
+  - dist/**/*
+  - "!dist/**/*.map"
+  - "!dist/renderer/gltest.js"
+  - package.json
+asar: true
+# Remove Background's model (downloaded by `npm run fetch-model`); without it the app downloads it on first use.
+extraResources:
+  - from: resources/models
+    to: models
+    filter:
+      - "*.onnx"
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Compositor
+  artifactName: Compositor-Setup-${version}.${ext}
+  uninstallDisplayName: Compositor
+portable:
+  artifactName: Compositor-${version}-Portable.${ext}
+# Double-clicking a .comp project opens it in Compositor.
+fileAssociations:
+  - ext: comp
+    name: Compositor Project
+    description: Compositor Project
+    icon: build/icon.ico
+    role: Editor
+# Help > Check for Updates reads the newest GitHub release of this repository.
+publish:
+  provider: github
+  owner: rambo-mn
+  repo: Compositor
+  releaseType: release

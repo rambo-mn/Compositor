@@ -20,7 +20,13 @@ const api = {
   version: () => ipcRenderer.invoke('app:version') as Promise<string>,
   openExternal: (url: string) => ipcRenderer.invoke('app:open-external', url) as Promise<void>,
   checkForUpdates: () => ipcRenderer.invoke('app:check-updates') as Promise<{ status: string; version?: string; message?: string }>,
-  saveModel: (name: string, data: Uint8Array) => ipcRenderer.invoke('app:save-model', name, data) as Promise<void>,
+  modelStatus: () => ipcRenderer.invoke('app:model-status') as Promise<{ available: boolean; size: number }>,
+  downloadModel: () => ipcRenderer.invoke('app:download-model') as Promise<void>,
+  onModelProgress: (listener: (progress: { received: number; total: number }) => void) => {
+    const handler = (_event: unknown, progress: { received: number; total: number }) => listener(progress);
+    ipcRenderer.on('app:model-progress', handler);
+    return () => { ipcRenderer.removeListener('app:model-progress', handler); };
+  },
   pathForFile: (file: File) => { try { return webUtils.getPathForFile(file) || null; } catch { return null; } },
   setTitle: (title: string) => ipcRenderer.send('window:set-title', title),
   toggleFullScreen: () => ipcRenderer.send('window:toggle-full-screen'),

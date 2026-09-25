@@ -3,11 +3,12 @@
 // not: native file dialogs, reading and writing files, the system clipboard, and installing updates.
 import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, Menu, net, protocol, shell, screen, systemPreferences } from 'electron';
 import type { OpenDialogOptions, SaveDialogOptions } from 'electron';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
+import { MODEL, downloadModel, modelFile } from './model';
 
 const isTest = process.env.COMPOSITOR_TEST === '1';
 if (isTest || process.env.COMPOSITOR_SOFTWARE_GL === '1') {
@@ -36,21 +37,18 @@ const mimeTypes: Record<string, string> = {
 function resolveAppPath(url: URL): string | null {
   let relative = decodeURIComponent(url.pathname);
   if (relative === '/' || relative === '') relative = '/index.html';
-  const models = relative.startsWith('/models/');
-  const base = models ? path.join(resourcesRoot, 'models') : rendererRoot;
-  const file = path.normalize(path.join(base, models ? relative.slice('/models/'.length) : relative));
-  if (!file.startsWith(base)) return null;
-  // A model the user downloaded later lives in the profile folder.
-  if (models && !existsSync(file)) {
-    const downloaded = path.join(app.getPath('userData'), 'models', path.basename(file));
-    return existsSync(downloaded) ? downloaded : file;
-  }
+  // The background-removal model: bundled with the app, or downloaded into the profile folder.
+  if (relative.startsWith('/models/')) return path.basename(relative) === MODEL.name ? modelFile(resourcesRoot) : null;
+  const file = path.normalize(path.join(rendererRoot, relative));
+  if (!file.startsWith(rendererRoot)) return null;
   return file;
 }
 
 function registerAppProtocol() {
   protocol.handle('app', async (request) => {
     const file = resolveAppPath(new URL(request.url));
+    // Development aid: COMPOSITOR_LOG_REQUESTS=<file> records what the page loads.
+    if (process.env.COMPOSITOR_LOG_REQUESTS) appendFileSync(process.env.COMPOSITOR_LOG_REQUESTS, `${request.url}${file && existsSync(file) ? '' : ' (missing)'}\n`);
     if (!file || !existsSync(file)) return new Response('Not found', { status: 404 });
     const response = await net.fetch(pathToFileURL(file).toString());
     const headers = new Headers({
@@ -293,11 +291,11 @@ function registerIpc() {
   ipcMain.handle('app:open-external', (_event, url: string) => {
     if (/^https:\/\//.test(url)) return shell.openExternal(url);
   });
-  ipcMain.handle('app:model-path', () => path.join(app.getPath('userData'), 'models'));
-  ipcMain.handle('app:save-model', async (_event, name: string, data: Uint8Array) => {
-    const folder = path.join(app.getPath('userData'), 'models');
-    await fs.mkdir(folder, { recursive: true });
-    await writeAtomically(path.join(folder, path.basename(name)), data);
+  ipcMain.handle('app:model-status', () => ({ available: modelFile(resourcesRoot) !== null, size: MODEL.size }));
+  ipcMain.handle('app:download-model', async (event) => {
+    await downloadModel((received, total) => {
+      if (!event.sender.isDestroyed()) event.sender.send('app:model-progress', { received, total });
+    });
   });
   ipcMain.on('app:renderer-ready', (event) => {
     rendererReady = true;
