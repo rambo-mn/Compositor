@@ -35,6 +35,8 @@ nsis:
   shortcutName: Compositor
   artifactName: Compositor-Setup-${version}.${ext}
   uninstallDisplayName: Compositor
+  # Explains, before installing, when "Only for me" can't write to the chosen folder (such as Program Files).
+  include: build/installer.nsh
 portable:
   artifactName: Compositor-${version}-Portable.${ext}
 # Double-clicking a .comp project opens it in Compositor.

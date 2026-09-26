@@ -29,6 +29,13 @@ run (GitHub → **Actions** → **Windows** → the latest run → **Artifacts**
 | `Compositor-Setup-<version>.exe` | The installer. Installs for your user (no administrator needed), lets you pick the folder, and adds Start menu and desktop shortcuts. Uninstall it from **Settings → Apps**. |
 | `Compositor-<version>-Portable.exe` | A single program you can run from anywhere (a USB stick, Downloads) without installing. It unpacks itself each time it starts, so it opens a little slower than the installed app. |
 
+The installer first asks who Compositor is for:
+
+- **Only for me** (the default) needs no administrator rights and suggests a folder in your user profile
+  (`%LOCALAPPDATA%\Programs\Compositor`). You can choose another folder, but not one that needs administrator rights,
+  such as Program Files; if you do, the installer says so before installing anything.
+- **Anyone who uses this computer** asks Windows for administrator permission and suggests Program Files.
+
 Pushing a tag named after the version in `package.json` (for example `v1.0.4`) also publishes both files as a
 GitHub release, which is where **Help → Check for Updates…** looks for new versions.
 
@@ -366,6 +373,10 @@ All adjustments preview live, apply to the selection only when there is one, and
   set the environment variable `COMPOSITOR_SOFTWARE_GL=1` (for example `set COMPOSITOR_SOFTWARE_GL=1` then run the
   `.exe` from the same Command Prompt). It is slower, but works everywhere.
 - **SmartScreen warning** — the builds aren’t signed; choose **More info → Run anyway**.
+- **“Error opening file for writing: …\Uninstall Compositor.exe”** while installing — installers built before
+  this check was added show this when **Only for me** is chosen with a folder that needs administrator rights, such
+  as `D:\Program Files`. Click **Abort**, run the installer again, and either keep the suggested folder or choose
+  **Anyone who uses this computer**. Current installers check the folder first and explain what to do.
 - **Remove Background can’t download its model** — the computer needs internet access to GitHub the first time (or
   install with the installer, which carries the model). The model is saved in
   `%APPDATA%\Compositor\models\`.
